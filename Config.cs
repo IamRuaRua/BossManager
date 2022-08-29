@@ -39,7 +39,6 @@ namespace BossManager
             {
                 Boss锁定状态[item] = false;
             }
-            Boss锁定状态["肉山"] = true;
         }
         public static void WriteConfig(Config PMConfig)
         {

@@ -16,11 +16,13 @@ namespace BossManager
 	{
 		List<String> KilledBoss = new List<String>();
 		List<String> NoKilledBoss = new List<String>();
+        readonly Boss boss = new Boss();
+		String KeyBoss;
 		public Config PMConfig;
 		public override string Author => "Rua";
 		public override string Description => "Boss控制插件";
 		public override string Name => "BossManager";
-		public override Version Version => new Version(1, 0, 0, 0);
+		public override Version Version => new Version(1, 0, 0, 1);
 		public ProgressManager(Main game) : base(game) { }
 		
 		public override void Initialize()
@@ -42,7 +44,37 @@ namespace BossManager
 					case "help":
 						sendPlayer.SendMessage("/BM lock bossName          -- 锁定某个boss"
 											+ "\n/BM unlock bossName                 -- 解锁某个boss"
-											+ "\n /BM listboss             -- 列出所有可锁定boss名称", new Microsoft.Xna.Framework.Color(255, 255, 0));
+											+"\n/BM status                --获取boss 锁定状态"
+											+ "\n/BM listboss             -- 列出所有可锁定boss名称", new Microsoft.Xna.Framework.Color(255, 255, 0));
+						return;
+					case "status":
+						string LockedBoss = "";
+						string UnLockedBoss = "";
+						string BossName;
+						for (int i = 0; i < boss.BossNameList.Length-1; i++)
+						{
+							 BossName = boss.BossNameList[i];
+							if (CheckABossIsLock(BossName))
+							{
+								LockedBoss += BossName + ",";
+
+							}
+							else
+							{
+								UnLockedBoss += BossName + ",";
+							}
+						}
+						BossName = boss.BossNameList[boss.BossNameList.Length-1];
+						if (CheckABossIsLock(BossName))
+						{
+							LockedBoss += BossName ;
+
+						}
+						else
+						{
+							UnLockedBoss += BossName;
+						}
+						sendPlayer.SendMessage("已锁定Boss:\n" + LockedBoss + "\n未锁定Boss:\n" + UnLockedBoss, new Microsoft.Xna.Framework.Color(255, 255, 0));
 						return;
 					case "lock":
                         if (SetBossLock(cmdArgs[1], true))
@@ -68,18 +100,17 @@ namespace BossManager
 					case "listBoss":
 					case "listboss":
 						string message = "";
-						Boss boss=new Boss();
                         for (int i = 0; i < boss.BossNameList.Length; i++)
                         {
-                            string item = boss.BossNameList[i];
+                            BossName = boss.BossNameList[i];
                             if (i % 2 == 0)
                             {
-								message += item+"    ";
+								message += BossName+"    ";
 
                             }
                             else
                             {
-								message += item + "\n";
+								message += BossName + "\n";
 							}
                         }
 						sendPlayer.SendMessage(message, new Microsoft.Xna.Framework.Color(255, 255, 0));
@@ -180,7 +211,7 @@ namespace BossManager
 				}
 			
 		} 
-		public void CheckABoss(bool Killed,string BossName)
+		public void CheckABoss(bool Killed,string BossName,bool IsKeyBoss=false)
         {
             if (Killed)
             {
@@ -188,42 +219,55 @@ namespace BossManager
 				
             }else {
 			    NoKilledBoss.Add(BossName);
+				if(IsKeyBoss&&KeyBoss==null)
+					KeyBoss = BossName;
 			}
         }
+		public bool CheckABossIsLock(string BossName)
+		{
+			PMConfig = Config.ReadConfig();
+			if (PMConfig.Boss锁定状态[BossName])
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
 
 		private object CheckBoss(RestRequestArgs args)//获取进度
 		{
 			KilledBoss = new List<String>();
-		    NoKilledBoss = new List<String>();
-			CheckABoss(NPC.downedSlimeKing, "史莱姆王");
-			CheckABoss(NPC.downedBoss1, "克苏鲁之眼");
-			CheckABoss(NPC.downedBoss2, "脑子或虫子");
+			NoKilledBoss = new List<String>();
+			CheckABoss(NPC.downedSlimeKing, "史莱姆王", true);
+			CheckABoss(NPC.downedBoss1, "克苏鲁之眼", true);
+			string Boss2Name = (Main.drunkWorld)? "虫子或脑子":(WorldGen.crimson) ? "邪神大脑" : "世界吞噬者";
+			CheckABoss(NPC.downedBoss2,Boss2Name,true);
 			CheckABoss(NPC.downedBoss3, "骷髅王");
 			CheckABoss(NPC.downedDeerclops, "鹿角兽");
 			CheckABoss(NPC.downedQueenBee, "蜂后");
-			CheckABoss(Main.hardMode, "肉山");
+			CheckABoss(Main.hardMode, "肉山", true);
 			CheckABoss(NPC.downedPirates, "海盗船");
-			CheckABoss(NPC.downedClown, "小丑");
 			CheckABoss(NPC.downedQueenSlime, "史莱姆皇后");
 			CheckABoss(NPC.downedFishron, "猪鲨");
 			CheckABoss(NPC.downedMartians, "太空飞碟");
 			CheckABoss(NPC.downedMechBoss1, "毁灭者");
 			CheckABoss(NPC.downedMechBoss2, "双子魔眼");
 			CheckABoss(NPC.downedMechBoss3, "机械骷髅王");
-			CheckABoss(NPC.downedPlantBoss, "世纪之花");
-			CheckABoss(NPC.downedGolemBoss, "石巨人");
+			CheckABoss(NPC.downedPlantBoss, "世纪之花", true);
+			CheckABoss(NPC.downedGolemBoss, "石巨人", true);
 			CheckABoss(NPC.downedEmpressOfLight, "光之女皇");
-			CheckABoss(NPC.downedAncientCultist, "邪恶教徒");
+			CheckABoss(NPC.downedAncientCultist, "邪恶教徒", true);
 			CheckABoss(NPC.downedTowerNebula, "星云柱");
 			CheckABoss(NPC.downedTowerSolar, "日曜柱");
 			CheckABoss(NPC.downedTowerStardust, "星尘柱");
 			CheckABoss(NPC.downedTowerVortex, "旋涡柱");
-			CheckABoss(NPC.downedMoonlord, "月总");
+			CheckABoss(NPC.downedMoonlord, "月总", true);
 			CheckABoss(NPC.downedChristmasIceQueen, "冰霜女王");
 			CheckABoss(NPC.downedChristmasSantank, "圣诞坦克");
 			CheckABoss(NPC.downedChristmasTree, "圣诞树");
 			CheckABoss(NPC.downedFrost, "霜月");
-			CheckABoss(NPC.downedGoblins, "小妖精");
 			CheckABoss(NPC.downedHalloweenKing, "南瓜王");
 			CheckABoss(NPC.downedHalloweenTree, "阴森树");
 			return new RestObject()
@@ -231,13 +275,18 @@ namespace BossManager
 					{
 						"KilledBoss",
 						KilledBoss
-                },
-                {
+				},
+				{
 						"NoKilledBoss",
 						NoKilledBoss
-                }
-				};
+				},
+				{
+				"KeyBoss",
+					KeyBoss+"前"
+				}
+			};
 		}
+		
 		public static JObject GetHttp(string uri)
 		{
 			using (var client = new HttpClient())
