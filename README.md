@@ -5,4 +5,5 @@
 
 /bm lock BossName     --锁定boss</br>
 /bm unlock BossName   --解锁boss</br>
+/bm status            --列出boss锁定状态</br>
 /bm listboss          --列出可以被锁定的boss名称
