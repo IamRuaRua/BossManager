@@ -15,6 +15,7 @@ using Terraria.Localization;
 using System.Activities;
 using OTAPI;
 using System.Threading;
+using System.IO;
 
 namespace BossManager
 {
@@ -24,7 +25,6 @@ namespace BossManager
         List<String> KilledBoss = new List<String>();
         List<String> NoKilledBoss = new List<String>();
         readonly Boss boss = new Boss();
-        String KeyBoss;
         public Config PMConfig;
         public override string Author => "Rua";
         public override string Description => "Boss和NPC控制插件";
@@ -36,10 +36,35 @@ namespace BossManager
         {
             LanguageManager.Instance.SetLanguage(7);//设置Tshock为中文
             ServerApi.Hooks.GamePostInitialize.Register(this, OnPostInitialize);
-            Commands.ChatCommands.Add(new Command(permissions: "BossManager", cmd: this.BossManagerCmd, "BM", "bm"));//注册bm命令
-            Commands.ChatCommands.Add(new Command(permissions: "NPCManager", cmd: this.NPCManagerCmd, "NM", "nm"));//注册nm命令
+            Commands.ChatCommands.Add(new Command(permissions: "Rua.BossManager", cmd: this.BossManagerCmd, "BM", "bm"));//注册bm命令
+            Commands.ChatCommands.Add(new Command(permissions: "Rua.NPCManager", cmd: this.NPCManagerCmd, "NM", "nm"));//注册nm命令
             TShock.RestApi.Register(new SecureRestCommand("/bossstatus", CheckBoss, "rest.boss"));
-            ServerApi.Hooks.NpcSpawn.Register(this, OnSpawnNPC, 10);//召唤BOSS   
+            ServerApi.Hooks.NpcSpawn.Register(this, OnSpawnNPC, 10);//召唤BOSS 
+            ServerApi.Hooks.NetGetData.Register(this, (GetDataEventArgs e) =>
+            {
+                if (e.MsgID == PacketTypes.SpawnBossorInvasion)
+                {
+                    using (var data = new MemoryStream(e.Msg.readBuffer, e.Index, e.Length - 1))
+                    {
+                        BinaryReader reader = new BinaryReader(data);
+                        int id = reader.ReadUInt16();
+                        int type = reader.ReadUInt16();
+                        TSPlayer player = TShock.Players[id];
+                        if (player != null)
+                        {
+                            if (type > 0)
+                            {
+                                TSPlayer.All.SendMessage($"[{player.Name}]召唤了{Lang.GetNPCName(type)}", Color.Yellow);
+                            }
+                            else
+                            {
+                                TSPlayer.All.SendMessage($"[{player.Name}]召唤错误", Color.White);
+                            }
+                        }
+                    }
+                }
+            });
+
             Config.EnsureFile();
             PMConfig = Config.ReadConfig();
         }
@@ -176,7 +201,7 @@ namespace BossManager
                           sendPlayer.SendMessage("/nm locknpc NPCNameOrID       -- 锁定某个NPC"
                                               + "\n/nm unlocknpc NPCNameOrID    -- 解锁某个NPC"
                                               + "\n/nm status                --获取NPC锁定状态"
-                                              + "\n/nm listboss              -- 列出所有可锁定NPC名称", new Color(255, 255, 0));
+                                              + "\n/nm search              --搜索npc", new Color(255, 255, 0));
                           return;
                       case "status": 
                           sendPlayer.SendMessage("已锁定NPC:\n" + GetLockedNPC(), new Color(255, 255, 0));
@@ -244,6 +269,36 @@ namespace BossManager
                                 FindNPC += npc.FullName + "(" + npc.netID.ToString() + "),";
                         }
                         sendPlayer.SendMessage($"发现多个NPC:\n{FindNPC.TrimEnd(',')}", new Color(255, 255, 0));
+                        break;
+                    case "s":
+                    case "search"://搜索NPC
+                        list = FindNPCByStringOrId(cmdArgs[1]);
+                        if (list == null || list.Count == 0)
+                        {
+                            sendPlayer.SendMessage($"未找到此NPC", new Color(255, 0, 0));
+                            return;
+                        }
+                        if (list.Count == 1)
+                        { 
+                            sendPlayer.SendMessage($"寻找到一个NPC {list.First().FullName + "(" + list.First().netID.ToString()})", new Color(0, 255, 0));
+                            return;
+                        }
+                        FindNPC = "";
+                        i = 0;
+                        foreach (NPC npc in list)
+                        {
+                            if (cmdArgs[1] == npc.FullName)
+                            {
+                                sendPlayer.SendMessage($"寻找到一个NPC {npc.FullName + "(" + npc.netID.ToString()})", new Color(0, 255, 0));
+                                return;
+                            }
+                            i++;
+                            if (i % 4 == 0)
+                                FindNPC += npc.FullName + "(" + npc.netID.ToString() + ")\n";
+                            else
+                                FindNPC += npc.FullName + "(" + npc.netID.ToString() + "),";
+                        }
+                        sendPlayer.SendMessage($"寻找到多个NPC:\n{FindNPC.TrimEnd(',')}", new Color(255, 255, 0));
                         break;
                     default:
                         sendPlayer.SendErrorMessage("语法错误,使用/nm help获取帮助");
@@ -341,10 +396,19 @@ namespace BossManager
 
         public void OnSpawnNPC(NpcSpawnEventArgs args)//控制NPC生成
         {
-          //  args.Handled = true;
+            args.Handled = true;
             var npc = Main.npc[args.NpcId];
             if (npc == null)
                 return;
+            if (npc.active && (npc.netID == 125 || npc.netID == 126) && IsLock(126))
+            {
+                npc.netID = 0;
+                npc.active = false;
+                TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", npc.netID);
+                if (boss.BossIDList.Contains(npc.netID))
+                    TSPlayer.All.SendInfoMessage(npc.FullName + "已被锁定，请联系管理员解锁");
+                return;
+             }
             if (npc.active && IsLock(npc.netID))
             { 
                 npc.netID = 0;
@@ -386,7 +450,7 @@ namespace BossManager
             string Boss2Name = (Main.drunkWorld) ? "虫子或脑子" : (WorldGen.crimson) ? "邪神大脑" : "世界吞噬者";
             if (!NPC.downedBoss2) return Boss2Name + "前";
             if (!Main.hardMode) return "肉山前";
-            if (!NPC.downedMechBoss1 || !NPC.downedMechBoss2 || !NPC.downedMechBoss3) return "三王时期";
+            if (!NPC.downedMechBoss1 || !NPC.downedMechBoss2 || !NPC.downedMechBoss3) return "新三王时期";
             if (!NPC.downedPlantBoss) return "世纪之花前";
             if(!NPC.downedGolemBoss)return  "石巨人前";
             if(!NPC.downedAncientCultist)return "邪恶教徒前";
