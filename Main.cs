@@ -51,7 +51,7 @@ namespace BossManager
 						string LockedBoss = "";
 						string UnLockedBoss = "";
 						string BossName;
-						for (int i = 0; i < boss.BossNameList.Length-1; i++)
+						for (int i = 0; i < boss.BossNameList.Length; i++)
 						{
 							 BossName = boss.BossNameList[i];
 							if (CheckABossIsLock(BossName))
@@ -64,17 +64,7 @@ namespace BossManager
 								UnLockedBoss += BossName + ",";
 							}
 						}
-						BossName = boss.BossNameList[boss.BossNameList.Length-1];
-						if (CheckABossIsLock(BossName))
-						{
-							LockedBoss += BossName ;
-
-						}
-						else
-						{
-							UnLockedBoss += BossName;
-						}
-						sendPlayer.SendMessage("已锁定Boss:\n" + LockedBoss + "\n未锁定Boss:\n" + UnLockedBoss, new Microsoft.Xna.Framework.Color(255, 255, 0));
+						sendPlayer.SendMessage("已锁定Boss:\n" + LockedBoss.TrimEnd(',') + "\n未锁定Boss:\n" + UnLockedBoss.TrimEnd(','), new Microsoft.Xna.Framework.Color(255, 255, 0));
 						return;
 					case "lock":
                         if (SetBossLock(cmdArgs[1], true))
