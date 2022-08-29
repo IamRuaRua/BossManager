@@ -10,11 +10,11 @@ namespace BossManager
         //路径
         public static string ConfigPath = $"{TShock.SavePath}/BossManager.json";
 
-        public string _备注="true表示Boss已锁定";
+        public string _备注 = "true表示Boss已锁定";
 
-        public Dictionary<string, bool> Boss锁定状态 = new Dictionary<string, bool>();
+        public Dictionary<string, bool> NPC锁定状态 = new Dictionary<string, bool>();
 
-        
+
         /// <summary>
         /// 确认配置文件存在，不存在则创建并填入默认值
         /// </summary>
@@ -22,9 +22,7 @@ namespace BossManager
         {
             if (!File.Exists(ConfigPath))
             {
-
-                File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(new Config()));
-         
+                File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(new Config(), Formatting.Indented));
             }
         }
         public static Config ReadConfig()
@@ -35,14 +33,14 @@ namespace BossManager
 
         public Config()
         {
-            foreach (var item in new Boss().BossNameList)
+            foreach (string name in new Boss().BossNameList)
             {
-                Boss锁定状态[item] = false;
+                NPC锁定状态[name] = false;
             }
         }
         public static void WriteConfig(Config PMConfig)
         {
-            File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(PMConfig));
+            File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(PMConfig, Formatting.Indented));
         }
     }
 }
